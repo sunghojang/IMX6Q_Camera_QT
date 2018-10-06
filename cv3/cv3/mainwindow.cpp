@@ -3,8 +3,10 @@
 #include <QMessageBox>
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
-
-
+#include <opencv2/gpu/gpu.hpp>
+#include <opencv2/imgproc/imgproc.hpp>
+#include <opencv2/calib3d/calib3d.hpp>
+using namespace cv;
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
     ui(new Ui::MainWindow)
@@ -25,7 +27,7 @@ MainWindow::MainWindow(QWidget *parent) :
         qDebug("ddd");
         cam->camera_frame(mcamera, timeout);
     }
-
+#if 0
 //    unsigned char* rgb =cam->yuyv2rgb(mcamera->head.start, mcamera->width, mcamera->height);
 //    QImage tmpImage(rgb, mcamera->width,mcamera->height, QImage::Format_RGB888 ); //image.format=RGB888
 //    if (tmpImage.save("test.bmp"), "BMP"){
@@ -37,7 +39,7 @@ MainWindow::MainWindow(QWidget *parent) :
 //    m_qimgCamDspSrc2.load("test.bmp");
 //    m_qimgCamDspSrc2.scaled(Overlabsizeimage2, Qt::IgnoreAspectRatio);
 //    ui->toolButton->setIcon(QPixmap::fromImage(m_qimgCamDspSrc2));
-
+#endif
 }
 
 MainWindow::~MainWindow()
@@ -84,15 +86,68 @@ void MainWindow::on_pushButton_2_clicked()
 
 void MainWindow::on_toolButton_clicked()
 {
+
+
+        QTimer *timerDsptime;
+        timerDsptime = new QTimer(this);
+        QObject::connect(timerDsptime,SIGNAL(timeout()),this,SLOT(slot_showQlabelFrame()),Qt::DirectConnection);
+        timerDsptime->start(33);
+}
+void MainWindow::slot_showQlabelFrame(){
     cam->camera_frame(mcamera, timeout);
     unsigned char* rgb =cam->yuyv2rgb(mcamera->head.start, mcamera->width, mcamera->height);
-    QImage *myImage = new QImage( rgb, mcamera->width, mcamera->height, QImage::Format_RGB888);
-    ui->label->setPixmap(QPixmap::fromImage(*myImage));
-    free(rgb);
 
-    //    QTimer *timerDsptime;
-    //    timerDsptime = new QTimer(this);
-    //    QObject::connect(timerDsptime,SIGNAL(timeout()),this,SLOT(on_pushButton_clicked()),Qt::DirectConnection);
-    //    timerDsptime->start(33);
+    Mat src(Size(640,480),CV_8UC3,rgb);
+    Mat src_gray;
+
+    cvtColor(src,src_gray,CV_RGB2GRAY);
+    vector<Vec3f> circles;
+    HoughCircles(src_gray,circles,CV_HOUGH_GRADIENT,2,src_gray.rows/4,200,100);
+    for( size_t i = 0; i < circles.size(); i++ )
+        {
+            Vec3i c = circles[i];
+            Point center = Point(c[0], c[1]);
+            // circle center
+            circle( src_gray, center, 1, Scalar(0,255,0),-1,8,0);
+            // circle outline
+            int radius = c[2];
+            circle( src_gray, center, radius, Scalar(0,0,255),3,8,0);
+        }
+
+    QImage *myImage = new QImage( src_gray.ptr<uchar>(0,0), mcamera->width, mcamera->height, QImage::Format_Indexed8);
+    ui->label->setPixmap(QPixmap::fromImage(*myImage));
+    QImage *myImage2 = new QImage( src.ptr<uchar>(0,0), mcamera->width, mcamera->height, QImage::Format_RGB888);
+    ui->label_2->setPixmap(QPixmap::fromImage(*myImage2));
+    free(rgb);
 }
-void ______________mxc_fb_overlay_____________();
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
