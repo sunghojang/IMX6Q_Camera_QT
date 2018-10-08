@@ -46,6 +46,8 @@ class camera : public QObject
 public:
     explicit camera(QObject *parent = 0);
 
+    camera_t* dev_camera;
+    static void print_pixelformat(char *prefix, int val);
     int xioctl(int fd, int request, void* arg);
     void quit(const char * msg);
     camera_t* camera_open(const char * device, uint32_t width, uint32_t height);

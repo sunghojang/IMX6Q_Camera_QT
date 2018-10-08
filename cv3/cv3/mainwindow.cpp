@@ -6,7 +6,9 @@
 #include <opencv2/gpu/gpu.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/calib3d/calib3d.hpp>
+
 using namespace cv;
+
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
     ui(new Ui::MainWindow)
@@ -100,6 +102,7 @@ void MainWindow::slot_showQlabelFrame(){
     Mat src(Size(640,480),CV_8UC3,rgb);
     Mat src_gray;
 
+#if 1 //OpenCV
     cvtColor(src,src_gray,CV_RGB2GRAY);
     vector<Vec3f> circles;
     HoughCircles(src_gray,circles,CV_HOUGH_GRADIENT,2,src_gray.rows/4,200,100);
@@ -113,6 +116,8 @@ void MainWindow::slot_showQlabelFrame(){
             int radius = c[2];
             circle( src_gray, center, radius, Scalar(0,0,255),3,8,0);
         }
+#endif
+
 
     QImage *myImage = new QImage( src_gray.ptr<uchar>(0,0), mcamera->width, mcamera->height, QImage::Format_Indexed8);
     ui->label->setPixmap(QPixmap::fromImage(*myImage));
