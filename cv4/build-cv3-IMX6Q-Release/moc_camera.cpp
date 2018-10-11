@@ -1,13 +1,13 @@
 /****************************************************************************
 ** Meta object code from reading C++ file 'camera.h'
 **
-** Created: Wed Oct 10 19:25:08 2018
+** Created: Wed Oct 10 17:24:34 2018
 **      by: The Qt Meta Object Compiler version 63 (Qt 4.8.2)
 **
 ** WARNING! All changes made in this file will be lost!
 *****************************************************************************/
 
-#include "../../cv4/cv3/camera.h"
+#include "../cv3/camera.h"
 #if !defined(Q_MOC_OUTPUT_REVISION)
 #error "The header file 'camera.h' doesn't include <QObject>."
 #elif Q_MOC_OUTPUT_REVISION != 63
@@ -50,7 +50,7 @@ const QMetaObjectExtraData camera::staticMetaObjectExtraData = {
 };
 
 const QMetaObject camera::staticMetaObject = {
-    { &QThread::staticMetaObject, qt_meta_stringdata_camera,
+    { &QObject::staticMetaObject, qt_meta_stringdata_camera,
       qt_meta_data_camera, &staticMetaObjectExtraData }
 };
 
@@ -68,12 +68,12 @@ void *camera::qt_metacast(const char *_clname)
     if (!_clname) return 0;
     if (!strcmp(_clname, qt_meta_stringdata_camera))
         return static_cast<void*>(const_cast< camera*>(this));
-    return QThread::qt_metacast(_clname);
+    return QObject::qt_metacast(_clname);
 }
 
 int camera::qt_metacall(QMetaObject::Call _c, int _id, void **_a)
 {
-    _id = QThread::qt_metacall(_c, _id, _a);
+    _id = QObject::qt_metacall(_c, _id, _a);
     if (_id < 0)
         return _id;
     return _id;

@@ -1,0 +1,7 @@
+cv3 : 
+v4l2 capture source -> add openCV -> qtgui QLabel widget -> QTimer -> Display
+YUYV -> RGB -> GRAY -> BINARY -> HOUGHCIRCLE
+cv4 :
+v4l2 overlay source -> add openCV -> qtgui not operate -> /dev/video0 to /dev/fb0 Display
+Driver v4l2 -> Driver FrameBuffer Directly
+	*cv4 add mxcfb.h file in ../include/, INCLUDEPATH add to .pro ../include

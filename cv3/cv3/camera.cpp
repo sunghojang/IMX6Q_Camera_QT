@@ -1,5 +1,5 @@
 #include "camera.h"
-
+#include <mxcfb.h>
 camera::camera(QObject *parent) : QObject(parent)
 {
 
@@ -73,56 +73,6 @@ void camera::camera_init(camera_t* camera) {
     if (xioctl(camera->fd, VIDIOC_QUERYCAP, &cap) == -1) quit("VIDIOC_QUERYCAP");
     if (!(cap.capabilities & V4L2_CAP_VIDEO_CAPTURE)) quit("no capture");
     if (!(cap.capabilities & V4L2_CAP_STREAMING)) quit("no streaming");
-
-    struct v4l2_cropcap cropcap;
-    memset(&cropcap, 0, sizeof cropcap);
-    cropcap.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-    if (xioctl(camera->fd, VIDIOC_CROPCAP, &cropcap) == 0) {
-        struct v4l2_crop crop;
-        crop.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-        crop.c = cropcap.defrect;
-        if (xioctl(camera->fd, VIDIOC_S_CROP, &crop) == -1) {
-            // cropping not supported
-        }
-    }
-
-    struct v4l2_format format;
-    memset(&format, 0, sizeof format);
-    format.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-    format.fmt.pix.width = camera->width;
-    format.fmt.pix.height = camera->height;
-    format.fmt.pix.pixelformat = V4L2_PIX_FMT_YUYV;
-    format.fmt.pix.field = V4L2_FIELD_NONE;
-    if (xioctl(camera->fd, VIDIOC_S_FMT, &format) == -1) quit("VIDIOC_S_FMT");
-
-
-    struct v4l2_requestbuffers req;
-    memset(&req, 0, sizeof req);
-    req.count = 4;
-    req.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-    req.memory = V4L2_MEMORY_MMAP;
-    if (xioctl(camera->fd, VIDIOC_REQBUFS, &req) == -1) quit("VIDIOC_REQBUFS");
-    camera->buffer_count = req.count;
-    camera->buffers =(buffer_t*) calloc(req.count, sizeof (buffer_t));
-
-    size_t buf_max = 0;
-    for (size_t i = 0; i < camera->buffer_count; i++) {
-        struct v4l2_buffer buf;
-        memset(&buf, 0, sizeof buf);
-        buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-        buf.memory = V4L2_MEMORY_MMAP;
-        buf.index = i;
-        if (xioctl(camera->fd, VIDIOC_QUERYBUF, &buf) == -1)
-            quit("VIDIOC_QUERYBUF");
-        if (buf.length > buf_max) buf_max = buf.length;
-        camera->buffers[i].length = buf.length;
-        camera->buffers[i].start =
-                (uint8_t*)  mmap(NULL, buf.length, PROT_READ | PROT_WRITE, MAP_SHARED,
-                                 camera->fd, buf.m.offset);
-        if (camera->buffers[i].start == MAP_FAILED) quit("mmap");
-    }
-    camera->head.start =(uint8_t*) malloc(buf_max);
-
 #if 1 //Confirm Chip Ident from ioctl
     struct v4l2_dbg_chip_ident chip;
     if (ioctl(camera->fd, VIDIOC_DBG_G_CHIP_IDENT, &chip))
@@ -176,6 +126,93 @@ void camera::camera_init(camera_t* camera) {
            parm.parm.capture.capturemode,
            parm.parm.capture.capability);
 #endif
+#if 1 ///////////////////////////////////////////////////////////////////////SET V4L2 Crop left-top width-height cut
+    struct v4l2_cropcap cropcap;
+    memset(&cropcap, 0, sizeof cropcap);
+    cropcap.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+    if (xioctl(camera->fd, VIDIOC_CROPCAP, &cropcap) == 0) {
+        struct v4l2_crop crop;
+        crop.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+        crop.c.left = 0 ;
+        crop.c.top  = 0 ;
+        crop.c.width = camera->width;
+        crop.c.height = camera->height;
+        qDebug("[[[[[[[[[[[[[[camera->width : %d, camera->height : %d",camera->width,camera->height);
+        //crop.c = cropcap.defrect;
+        if (xioctl(camera->fd, VIDIOC_S_CROP, &crop) == -1) {
+            // cropping not supported
+            qDebug("cropping not supported");
+        }
+    }
+#endif
+#if 1 ///////////////////////////////////////////////////////////////////////SET V4L2 FORMAT
+    struct v4l2_format format;
+    memset(&format, 0, sizeof format);
+    format.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+    format.fmt.pix.width = camera->width;
+    format.fmt.pix.height = camera->height;
+    format.fmt.pix.pixelformat = V4L2_PIX_FMT_YUYV;
+    format.fmt.pix.field = V4L2_FIELD_NONE;
+    if (xioctl(camera->fd, VIDIOC_S_FMT, &format) == -1) quit("VIDIOC_S_FMT");
+    if (xioctl(camera->fd, VIDIOC_G_FMT, &format) == -1) quit("VIDIOC_G_FMT");
+#endif
+
+    struct v4l2_requestbuffers req;
+    memset(&req, 0, sizeof req);
+    req.count = 4;
+    req.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+    req.memory = V4L2_MEMORY_MMAP;
+#if 1 //CAPTURE
+    if (xioctl(camera->fd, VIDIOC_REQBUFS, &req) == -1) quit("VIDIOC_REQBUFS");
+    camera->buffer_count = req.count;
+    camera->buffers =(buffer_t*) calloc(req.count, sizeof (buffer_t));
+
+    size_t buf_max = 0;
+    for (size_t i = 0; i < camera->buffer_count; i++) {
+        struct v4l2_buffer buf;
+        memset(&buf, 0, sizeof buf);
+        buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+        buf.memory = V4L2_MEMORY_MMAP;
+        buf.index = i;
+        if (xioctl(camera->fd, VIDIOC_QUERYBUF, &buf) == -1)
+            quit("VIDIOC_QUERYBUF");
+        if (buf.length > buf_max) buf_max = buf.length;
+        camera->buffers[i].length = buf.length;
+        camera->buffers[i].start =
+                (uint8_t*)  mmap(NULL, buf.length, PROT_READ | PROT_WRITE, MAP_SHARED,
+                                 camera->fd, buf.m.offset);
+        if (camera->buffers[i].start == MAP_FAILED) quit("mmap");
+    }
+    camera->head.start =(uint8_t*) malloc(buf_max);
+#endif
+#if 0 //OVERLAP
+    if (xioctl(camera->fd, VIDIOC_QUERYBUF, &req) == -1) quit("VIDIOC_REQBUFS");
+    camera->buffer_count = req.count;
+    camera->buffers =(buffer_t*) calloc(req.count, sizeof (buffer_t));
+
+    size_t buf_max = 0;
+    for (size_t i = 0; i < camera->buffer_count; ++i) {
+        struct v4l2_buffer buf;
+        memset(&buf, 0, sizeof buf);
+        buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+        buf.memory = V4L2_MEMORY_MMAP;
+        buf.index = i;
+        if (xioctl(camera->fd, VIDIOC_QUERYBUF, &buf) == -1)
+            quit("VIDIOC_QUERYBUF");
+        if (buf.length > buf_max) buf_max = buf.length;
+        camera->buffers[i].length = buf.length;
+        camera->buffers[i].start =
+                (uint8_t*)  mmap(NULL, buf.length, PROT_READ | PROT_WRITE,
+                                 MAP_SHARED,
+                                 camera->fd, buf.m.offset);
+        if (camera->buffers[i].start == MAP_FAILED) quit("mmap");
+    }
+    camera->head.start =(uint8_t*) malloc(buf_max);
+#endif
+
+
+
+
 #if 1 //FlASH FRAME
     struct v4l2_control ctl;
     for (int i = 0; i < 3 ; i++) {

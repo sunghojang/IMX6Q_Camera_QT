@@ -6,6 +6,7 @@
 #include <opencv2/gpu/gpu.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/calib3d/calib3d.hpp>
+#include <opencv2/video/background_segm.hpp>
 
 using namespace cv;
 
@@ -18,7 +19,7 @@ MainWindow::MainWindow(QWidget *parent) :
 
     cam =new camera(this);
     //loadFromData
-    mcamera = cam->camera_open("/dev/video0", 640, 480);
+    mcamera = cam->camera_open("/dev/video0", 720,576);
     cam->camera_init(mcamera);
     cam->camera_start(mcamera);
 
@@ -30,17 +31,17 @@ MainWindow::MainWindow(QWidget *parent) :
         cam->camera_frame(mcamera, timeout);
     }
 #if 0
-//    unsigned char* rgb =cam->yuyv2rgb(mcamera->head.start, mcamera->width, mcamera->height);
-//    QImage tmpImage(rgb, mcamera->width,mcamera->height, QImage::Format_RGB888 ); //image.format=RGB888
-//    if (tmpImage.save("test.bmp"), "BMP"){
-//        qDebug() << "image.bmp save the image";
-//    }
+    //    unsigned char* rgb =cam->yuyv2rgb(mcamera->head.start, mcamera->width, mcamera->height);
+    //    QImage tmpImage(rgb, mcamera->width,mcamera->height, QImage::Format_RGB888 ); //image.format=RGB888
+    //    if (tmpImage.save("test.bmp"), "BMP"){
+    //        qDebug() << "image.bmp save the image";
+    //    }
 
-//    QSize Overlabsizeimage2(800,450);
-//    QImage m_qimgCamDspSrc2(Overlabsizeimage2, QImage::Format_ARGB32_Premultiplied);
-//    m_qimgCamDspSrc2.load("test.bmp");
-//    m_qimgCamDspSrc2.scaled(Overlabsizeimage2, Qt::IgnoreAspectRatio);
-//    ui->toolButton->setIcon(QPixmap::fromImage(m_qimgCamDspSrc2));
+    //    QSize Overlabsizeimage2(800,450);
+    //    QImage m_qimgCamDspSrc2(Overlabsizeimage2, QImage::Format_ARGB32_Premultiplied);
+    //    m_qimgCamDspSrc2.load("test.bmp");
+    //    m_qimgCamDspSrc2.scaled(Overlabsizeimage2, Qt::IgnoreAspectRatio);
+    //    ui->toolButton->setIcon(QPixmap::fromImage(m_qimgCamDspSrc2));
 #endif
 }
 
@@ -90,39 +91,65 @@ void MainWindow::on_toolButton_clicked()
 {
 
 
-        QTimer *timerDsptime;
-        timerDsptime = new QTimer(this);
-        QObject::connect(timerDsptime,SIGNAL(timeout()),this,SLOT(slot_showQlabelFrame()),Qt::DirectConnection);
-        timerDsptime->start(33);
+    QTimer *timerDsptime;
+    timerDsptime = new QTimer(this);
+    QObject::connect(timerDsptime,SIGNAL(timeout()),this,SLOT(slot_showQlabelFrame()),Qt::DirectConnection);
+    timerDsptime->start(33);
 }
 void MainWindow::slot_showQlabelFrame(){
     cam->camera_frame(mcamera, timeout);
     unsigned char* rgb =cam->yuyv2rgb(mcamera->head.start, mcamera->width, mcamera->height);
 
-    Mat src(Size(640,480),CV_8UC3,rgb);
-    Mat src_gray;
 
-#if 1 //OpenCV
+
+#if 0 //OpenCV Color -> GrayScale -> Hough Circle
+    Mat src(Size(mcamera->width,mcamera->height),CV_8UC3,rgb);
+    Mat src_gray;
     cvtColor(src,src_gray,CV_RGB2GRAY);
     vector<Vec3f> circles;
     HoughCircles(src_gray,circles,CV_HOUGH_GRADIENT,2,src_gray.rows/4,200,100);
     for( size_t i = 0; i < circles.size(); i++ )
-        {
-            Vec3i c = circles[i];
-            Point center = Point(c[0], c[1]);
-            // circle center
-            circle( src_gray, center, 1, Scalar(0,255,0),-1,8,0);
-            // circle outline
-            int radius = c[2];
-            circle( src_gray, center, radius, Scalar(0,0,255),3,8,0);
-        }
-#endif
-
-
+    {
+        Vec3i c = circles[i];
+        Point center = Point(c[0], c[1]);
+        // circle center
+        circle( src_gray, center, 1, Scalar(0,255,0),-1,8,0);
+        // circle outline
+        int radius = c[2];
+        circle( src_gray, center, radius, Scalar(0,0,255),3,8,0);
+    }
     QImage *myImage = new QImage( src_gray.ptr<uchar>(0,0), mcamera->width, mcamera->height, QImage::Format_Indexed8);
     ui->label->setPixmap(QPixmap::fromImage(*myImage));
     QImage *myImage2 = new QImage( src.ptr<uchar>(0,0), mcamera->width, mcamera->height, QImage::Format_RGB888);
     ui->label_2->setPixmap(QPixmap::fromImage(*myImage2));
+#endif
+#if 1 //OpenCV Color -> GrayScale -> Binary low high -> Hough Circle
+    Mat src(Size(mcamera->width,mcamera->height),CV_8UC3,rgb);
+    Mat src_gray;
+    Mat dist_range;
+    cvtColor(src,src_gray,CV_RGB2GRAY);
+    Scalar lowerb(100,100,100);
+    Scalar upperb(200,200,200);
+    inRange(src_gray,lowerb, upperb, dist_range);
+    vector<Vec3f> circles;
+    HoughCircles(dist_range,circles,CV_HOUGH_GRADIENT,2,dist_range.rows/4,200,100);
+    for( size_t i = 0; i < circles.size(); i++ )
+    {
+        Vec3i c = circles[i];
+        Point center = Point(c[0], c[1]);
+        // circle center
+        circle( dist_range, center, 1, Scalar(0,255,0),-1,8,0);
+        // circle outline
+        int radius = c[2];
+        circle( dist_range, center, radius, Scalar(0,0,255),3,8,0);
+    }
+    QImage *myImage = new QImage( dist_range.ptr<uchar>(0,0), mcamera->width, mcamera->height, QImage::Format_Indexed8);
+    ui->label->setPixmap(QPixmap::fromImage(*myImage));
+    QImage *myImage2 = new QImage( src.ptr<uchar>(0,0), mcamera->width, mcamera->height, QImage::Format_RGB888);
+    ui->label_2->setPixmap(QPixmap::fromImage(*myImage2));
+#endif
+
+
     free(rgb);
 }
 
