@@ -1,3 +1,4 @@
+IMX6Q QT,Opencv on
 cv3 : 
 v4l2 capture source -> add openCV -> qtgui QLabel widget -> QTimer -> Display
 YUYV -> RGB -> GRAY -> BINARY -> HOUGHCIRCLE
